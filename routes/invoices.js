@@ -24,7 +24,7 @@ router.get('/:id', async (req, res, next) => {
                                         FROM invoices AS i 
                                         JOIN companies AS c
                                         ON i.comp_code = c.code
-                                        WHERE id = $1`, [id]);
+                                        WHERE i.id = $1`, [id]);
         if (results.rows.length === 0){
             throw new ExpressError(`Can't find invoice with id ${id}`, 404);
         }
@@ -67,15 +67,35 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
     try{
         const {id} = req.params;
-        const {amt} = req.body;
-        const results = await db.query(`UPDATE invoices
-                                        SET amt=$2
-                                        WHERE id=$1 
-                                        RETURNING id, comp_code, amt, paid, add_date, paid_date`, [id, amt]);
-        if (results.rows.length === 0) {
+        const {amt, paid} = req.body;
+
+        const select = await db.query(`SELECT paid 
+                                       FROM invoices
+                                       WHERE id =$1`, [id]);
+        if (select.rows.length === 0) {
             throw new ExpressError(`Can't find invoice with id ${id}`, 404)
         }
+
+        const currPaidDate = select.rows[0].paid_date;
+        let paidDate = null;
+
+        if (paid && currPaidDate == null){
+            paidDate = new Date()
+        }
+        else if (!paid){
+            paidDate = null;
+        }
+        else{
+            paidDate = currPaidDate
+        }
+
+        const results = await db.query(`UPDATE invoices
+                                        SET amt=$2, paid=$3, paid_date=$4
+                                        WHERE id=$1 
+                                        RETURNING id, comp_code, amt, paid, add_date, paid_date`, [id, amt, paid, paidDate]);
+
         return res.status(200).json({invoice: results.rows[0]})
+
     }
     catch(e){
         return next(e)

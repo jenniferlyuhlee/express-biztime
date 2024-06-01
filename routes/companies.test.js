@@ -10,7 +10,8 @@ beforeEach(async () => {
     const result = await db.query(`INSERT INTO companies (code, name, description)
                                    VALUES ('sb', 'Springboard', 'Tech education')
                                    RETURNING code, name, description`)
-    testCompany = result.rows[0]
+
+    testCompany = result.rows[0];
 })
 
 afterEach(async () => {
@@ -35,7 +36,14 @@ describe ('GET /companies/:code', () => {
         const resp = await request(app).get(`/companies/${testCompany.code}`)
         
         expect(resp.statusCode).toBe(200);
-        expect(resp.body).toEqual({company: testCompany});
+        let altTestCompany = {
+            code: testCompany.code,
+            description: testCompany.description,
+            name: testCompany.name,
+            industries: expect.any(Array)
+
+        }
+        expect(resp.body).toEqual({company: altTestCompany});
     })
     test('Responds with 404 for invalid code', async() => {
         const resp = await request(app).get('/companies/iv')
@@ -47,10 +55,10 @@ describe ('GET /companies/:code', () => {
 describe('POST /companies', () => {
     test('Creates a single company', async ()=> {
         const resp = await request(app).post('/companies')
-        .send({code: 'ts', name: 'Test', description: 'Test company.'});
+        .send({name: 'Test', description: 'Test company.'});
         
         expect(resp.statusCode).toBe(201);
-        expect(resp.body).toEqual({company: { code: 'ts', name: 'Test', description: 'Test company.' }})
+        expect(resp.body).toEqual({company: { code: expect.any(String), name: 'Test', description: 'Test company.' }})
     })
 })
 
